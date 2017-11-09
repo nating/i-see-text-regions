@@ -7,7 +7,6 @@
   Created by Geoffrey Natin on 25/10/2017.
   Copyright © 2017 nating. All rights reserved.
 */
-
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include "json.hpp" //https://github.com/nlohmann/json
@@ -87,12 +86,11 @@ Mat grayscale(Mat img){
 }
 
 //This function turns a grayscale image into a binary image
-Mat binary(Mat grayscaleImage){
+Mat binary(Mat grayscaleImage,int block_size,int offset, int output_value){
     Mat binaryMat;
-    int block_size = 19;
-    int offset = 20;
-    int output_value = 255;
-    adaptiveThreshold( grayscaleImage, binaryMat, output_value, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, block_size, offset );
+    int threshold = 128; //Shouldn't matter as OTSU is used
+    cv::threshold( grayscaleImage, binaryMat, threshold, 255, THRESH_BINARY | THRESH_OTSU );
+    //adaptiveThreshold( grayscaleImage, binaryMat, output_value, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, block_size, offset );
     return binaryMat;
 }
 
@@ -165,7 +163,60 @@ Mat drawContours(Mat img, vector<vector<Point>> contours){
     return contoursMat;
 }
 
+//This function displays the images from a Mat array in a window (all images must be of the same color space, I think?)
+void display_images(string window_name, int n, cv::Mat images[n]){
+    cv::Mat wind = images[0];
+    for(int i=1;i<n;i++){
+        cv::hconcat(wind,images[i], wind); // horizontal
+    }
+    std::cout << "Displaying "+window_name << std::endl;
+    namedWindow(window_name,cv::WINDOW_AUTOSIZE);
+    imshow(window_name,wind);
+}
 
+//This function takes an image and the accepted color difference for pixels to be in the same region, returning a flood filled version of the image
+Mat floodFill( Mat img, int color_difference){
+    CV_Assert( !img.empty() );
+    RNG rng = theRNG();
+    Mat mask( img.rows+2, img.cols+2, CV_8UC1, Scalar::all(0) ); //The floodFill function requires that the rows and columns are this length
+    for(int y=0;y<img.rows;y++){
+        for(int x=0;x<img.cols;x++){
+            if( mask.at<uchar>(y+1, x+1) == 0 ){
+                Scalar newVal( rng(256), rng(256), rng(256) );
+                floodFill( img, mask, Point(x,y), newVal, 0, Scalar::all(color_difference), Scalar::all(color_difference),4);
+            }
+        }
+    }
+    return img;
+}
+
+//This function takes an image and the accepted color difference for pixels to be in the same region, then returns an array of rectangles in the image each of which is the enclosing upright rectangle of a segment in the image.
+Mat getSegmentsRectangles( Mat img, int color_difference){
+    Mat newImg = img.clone();
+    CV_Assert( !img.empty() );
+    RNG rng = theRNG();
+    Mat mask( img.rows+2, img.cols+2, CV_8UC1, Scalar::all(0) ); //The floodFill function requires that the rows and columns are this length
+    for(int y=0;y<img.rows;y++){
+        for(int x=0;x<img.cols;x++){
+            if( mask.at<uchar>(y+1, x+1) == 0 ){
+                Rect boundingRectOfSegment;
+                Scalar newVal( rng(256), rng(256), rng(256) );
+                floodFill( img, mask, Point(x,y), newVal, &boundingRectOfSegment, Scalar::all(color_difference), Scalar::all(color_difference),4);
+                if(boundingRectOfSegment.width > 4 && boundingRectOfSegment.height > 4){
+                    rectangle(newImg, boundingRectOfSegment, newVal);
+                }
+            }
+        }
+    }
+    return newImg;
+}
+
+//This function takes an image and mean-shift parameters and returns a version of the image that has had mean shift segmentation performed on it
+Mat meanShiftSegmentation( Mat img, int spatial_radius, int color_radius, int maximum_pyramid_level ){
+    Mat res = img.clone();
+    pyrMeanShiftFiltering(img,res,spatial_radius,color_radius,maximum_pyramid_level);
+    return res;
+}
 
 //This function finds the regions of text within an image (under development and doesn't do that at the moment)
 void find_text(cv::Mat img){
@@ -173,12 +224,29 @@ void find_text(cv::Mat img){
     //Declare variables
     Mat contours_image, croppedImage;
     
+    
+    //Perform mean shift segmentation on the image
+    int spatial_radius = 80;
+    int color_radius = 45;
+    int maximum_pyramid_level = 0;
+    Mat meanShiftSegmentationImage = meanShiftSegmentation(img, spatial_radius, color_radius, maximum_pyramid_level);
+    
     //Convert the image to grayscale
-    Mat grayscaleMat = grayscale(img);
+    Mat grayscaleMat = grayscale(meanShiftSegmentationImage);
     
     //Convert the grayscale image into a binary image
-    Mat binaryMat = binary(grayscaleMat);
+    int block_size = 19;
+    int offset = 20;
+    int output_value = 255;
+    Mat binaryMat = binary(grayscaleMat,block_size,offset,output_value);
     
+    
+    
+    //Flood fill the image
+    int color_difference = 20;
+    Mat floodFillImage = getSegmentsRectangles(meanShiftSegmentationImage, color_difference);
+    
+    /*
     //Close and Open the image
     Mat closedMat = close(binaryMat);
     Mat openedMat = open(closedMat);
@@ -193,78 +261,80 @@ void find_text(cv::Mat img){
     
     //Draw the contours of the image
     //Mat signsImg = drawRectangles(img, contoursWithNChildren);
+     */
     
-    int sp = 30; // 30 or 80 maybe? Tried all tens in between and wasn't much difference
-    int sr = 5; // not much difference from 1-10
     Mat img01, img02, img03, img1,img2,img3,img4,img5,img6;
     //cv::pyrMeanShiftFiltering (img, img1, sp, sr, 1, TermCriteria(TermCriteria::MAX_ITER, 5, 1));
     
-    Mat poops[] = {img1};
-    display_images(1,poops);
+    Mat poops[] = {floodFillImage};
+    display_images("Window",1,poops);
     
-    //cv::Mat images[] = {grayscaleMat,binaryMat,closedMat,openedMat};
+    //cv::Mat images[] = {meanShiftSegmentationImage,grayscaleMat,binaryMat};
     //display_images(4,images);
     
     waitKey(0);
 }
 
-// This the cpp version of the code at (https://stackoverflow.com/questions/24385714/detect-text-region-in-image-using-opencv) but it is really bad
-void do_the_func(Mat img){
-    
-    Mat copy = img;
-    Mat ret,mask,new_img,dilated;
-    
-    Mat img2gray = grayscale(img);
-    cv::threshold(img2gray, ret, 180, 255, cv::THRESH_BINARY);
-    cv::threshold(img2gray, mask, 180, 255, cv::THRESH_BINARY);
-    cv::bitwise_and(img2gray, img2gray, copy, mask);
-    cv::threshold(copy, ret, 180, 255, cv::THRESH_BINARY);  // for black text , cv.THRESH_BINARY_INV
-    cv::threshold(copy, new_img, 180, 255, cv::THRESH_BINARY);  // for black text , cv.THRESH_BINARY_INV
-    
-    Mat kernel = cv::getStructuringElement(cv::MORPH_CROSS,Point(3,3));  //to manipulate the orientation of dilution , large x means horizonatally dilating  more, large y means vertically dilating more
-    cv::dilate(new_img, dilated,kernel);  //dilate , more the iteration more the dilation
-    
-    vector<vector<Point>> contours;
-    vector<Vec4i> hierarchy;
-    cv::findContours(dilated, contours, hierarchy,cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);  //get contours
-    
-    for(int i=0;i<contours.size();i++){
-        vector<Point> contour = contours[i];
-        //get rectangle bounding contour
-        Rect r = cv::boundingRect(contour);
-        
-        //Don't plot small false positives that aren't text
-        if(r.width < 35 and r.height < 35){
-            //draw rectangle around contour on original image
-            cv::rectangle(img, r.tl(), r.br(), (255, 0, 255), 2);
-            
-            /*
-             //you can crop image and send to OCR  , false detected will return no text :)
-             cropped = img_final[y :y +  h , x : x + w]
-             
-             s = file_name + '/crop_' + str(index) + '.jpg'
-             cv2.imwrite(s , cropped)
-             index = index + 1
-             
-             */
-            //write original image with added contours to disk
-            cv::imshow("captcha_result", img);
-            cv::waitKey();
-        }
-    }
+//TODO
+//This function takes an array of rectangles and returns an array of all the rectangles which enclose at least n other rectangles within the array
+Rect* getPossibleSignRectangles(Rect segmentRectangles[]){
+    return segmentRectangles;
 }
 
-int main(int argc, const char * argv[]) {
+//TODO
+//This function returns true if the second rectangle is enclosed within the first
+bool isEnclosing(Rect r1, Rect r2){
+    return true;
+}
+
+//TODO
+//This function takes two rectangles and determines whether they could be considered two letters of a word (are nearby, roughly same size, same color)
+bool couldBeTwoLetters(Rect r1, Rect r2){
+    return true;
+}
+
+//TODO
+//This function checks that two rectangles are close by to eachother
+bool areCloseBy(Rect r1, Rect r2){
+    return true;
+}
+
+//TODO
+//This function takes to rectangles and checks that they are rougly the same color
+bool areTheSameColor(Rect r1, Rect r2){
+    return true;
+}
+
+//TODO
+//This function takes to rectangles and checks that they are rougly the same size
+bool areRoughlyTheSameSize(Rect r1, Rect r2){
+    return true;
+}
+
+/*
+ 
+ Mean Shift segmentation has been good in collecting up similar pixels into regions.
+ Now, I want to do connected components analysis in order to find components with a lot of holes in them.
+ Making a binary image won't suit, because all segments will be grouped into one of two regions if I perform binary thresholding.
+
+ */
+
+int main(int argc, char** argv){
     
     //Load images from their directory
     string path_to_images = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/notice-images/";
     const int number_of_images = 8;
     Mat images[number_of_images];
+    
+    //Process each image
     for(int i=0;i<number_of_images;i++){
+        
+        //Read in the image
         string image_name = "Notice"+to_string(i+1)+".jpg";
         images[i] = imread(path_to_images+image_name);
+        if(images[i].empty()){ return -1; }
+    
         find_text(images[i]);
     }
-    
     return 0;
 }
