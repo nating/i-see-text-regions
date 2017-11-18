@@ -7,6 +7,7 @@
   Created by Geoffrey Natin on 25/10/2017.
   Copyright © 2017 nating. All rights reserved.
 */
+
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include "json.hpp" //https://github.com/nlohmann/json
@@ -92,6 +93,11 @@ class segmentRectangle{
 };
 
 
+//This function returns true if the two rectangles intersect
+bool intersect(Rect r1, Rect r2){
+    return ((r1 & r2).area() > 0);
+}
+
 //This function draws a bounding red rectangle around a contour in an image
 void enclose_in_angled_rectangle(cv::Mat img, vector<Point> contour) {
     static cv::RNG rng(12345);
@@ -139,6 +145,24 @@ void create_ground_truth_images(string path_to_images,string path_to_ground_trut
         }
         imwrite(path_to_ground_truth_images+name, img);
     }
+}
+
+vector<vector<Rect>> read_ground_truths(string path_to_ground_truths_json){
+    vector<vector<Rect>> ground_truths;
+    std::ifstream i(path_to_ground_truths_json);
+    json j;
+    i >> j;
+    for (json::iterator it = j["notices"].begin(); it != j["notices"].end(); ++it) {
+        vector<Rect> gs;
+        string name = it.value()["name"];
+        for (json::iterator z = it.value()["boxes"].begin(); z != it.value()["boxes"].end(); ++z) {
+            Point p0 = Point(z.value()[0][0],z.value()[0][1]);
+            Point p1 = Point(z.value()[1][0],z.value()[1][1]);
+            gs.push_back(Rect(p0,p1));
+        }
+        ground_truths.push_back(gs);
+    }
+    return ground_truths;
 }
 
 //This function displays the images from a Mat array in a window (all images must be of the same color space, I think?)
@@ -271,6 +295,53 @@ vector<segmentRectangle> getSegmentsRectangles( Mat img, int color_difference, i
     return srs;
 }
 
+//
+vector<Rect> encloseIntersectingRects(vector<Rect> textRegions){
+    
+    vector<Rect> intersectFinishedTextRegions;
+    
+    //Create graphs to represent the text regions
+    int textRegionGraph[textRegions.size()];
+    for(int i=0;i<textRegions.size();i++){
+        textRegionGraph[i] = i;
+    }
+    
+    //Connect graphs of intersecting text regions
+    for(int i=0;i<textRegions.size();i++){
+        int i_region = textRegionGraph[i];
+        for(int j=0;j<textRegions.size();j++){
+            int j_region = textRegionGraph[j];
+            if(intersect(textRegions[i], textRegions[j])){
+                //Add every rectangle k, from j's region, to rectangle i's region
+                for(int k=0;k<textRegions.size();k++){
+                    if(textRegionGraph[k]==j_region){ textRegionGraph[k] = i_region; }
+                }
+            }
+        }
+    }
+    
+    //For all text region that are connected, get the enclosing rectangle of the text region
+    for (int i=0;i<textRegions.size();i++) {
+        int i_region = textRegionGraph[i];
+        if(i_region==-1){ continue; }
+        int tlx = textRegions[i].tl().x; int tly = textRegions[i].tl().y; int brx = textRegions[i].br().x; int bry = textRegions[i].br().y;
+        //Get the maximum tl and br of the text region
+        for(int j=0;j<textRegions.size();j++){
+            if(textRegionGraph[j]==textRegionGraph[i]){
+                tlx = min(tlx, textRegions[j].tl().x);
+                tly = min(tly, textRegions[j].tl().y);
+                brx = max(brx, textRegions[j].br().x);
+                bry = max(bry, textRegions[j].br().y);
+            }
+        }
+        cv::Rect boundingRect(Point(tlx,tly),Point(brx,bry));
+        intersectFinishedTextRegions.push_back(boundingRect);
+        for(int j=0;j<textRegions.size();j++){
+            if(textRegionGraph[j]==i_region){ textRegionGraph[j] = -1; }
+        }
+    }
+    return intersectFinishedTextRegions;
+}
 
 //-------------------------- FINDING TEXT SPECIFICALLY ----------------------------------
 
@@ -279,17 +350,12 @@ bool isEnclosing(Rect r1, Rect r2){
     return ( r2.tl().x > r1.tl().x && r2.tl().y > r1.tl().y && r2.br().x < r1.br().x && r2.br().y < r2.br().y );
 }
 
-//This function returns true if the two rectangles intersect
-bool intersect(Rect r1, Rect r2){
-    return ((r1 & r2).area() > 0);
-}
-
 //This function checks that two rectangles are close by to eachother
 bool areCloseBy(Rect r1, Rect r2,float height_increase_for_overlap,float width_increase_for_overlap){
     Point newTL(r1.tl().x-(width_increase_for_overlap*(r1.width/2)),r1.tl().y-(height_increase_for_overlap*(r1.height/2)));
     Point newBR(r1.br().x+(width_increase_for_overlap*(r1.width/2)),r1.br().y+(height_increase_for_overlap*(r1.height/2)));
     Rect r3(newTL,newBR);
-    return intersect(r3, r2);
+    return intersect(r3, r2) && !intersect(r1,r2);
 }
 
 //This function takes two RGB colors and returns whether they are within the allowed euclidean color difference within the RGB space
@@ -322,11 +388,11 @@ bool areRoughlyTheSameSize(Rect r1, Rect r2,float allowed_height_ratio, float al
 //  (are nearby, roughly same size, same color)
 bool couldBeTwoLetters(Rect r1, Rect r2,Scalar r1_color,Scalar r2_color){
     
-    float allowed_height_ratio = 2.5;
+    float allowed_height_ratio = 1.82; // 1.8 splits up the s in 'This' and the g in 'grass' on last notice. 1.85 puts together the second and third sign on notice 4 (the blue 3)
     float allowed_width_ratio = 2.5;
-    float height_increase_for_overlap = 2;
+    float height_increase_for_overlap = 1.6;
     float width_increase_for_overlap = 3.5;
-    float allowed_color_difference = 40;
+    float allowed_color_difference = 30;
     
     return areRoughlyTheSameSize(r1,r2,allowed_height_ratio,allowed_width_ratio)
                 && areCloseBy(r1, r2,height_increase_for_overlap,width_increase_for_overlap)
@@ -435,7 +501,7 @@ vector<Rect> getTextRegionsWithRecursion(Mat img){
  It then takes all the segmentRectangles (which represent the segments) and for each one, sees that with another segmentRectangle, could it be one of Two Letters.
  Words are grouped together this way and then return.
  */
-vector<Rect> getTextRegionsNoRecursion(Mat img){
+vector<Rect> getTextRegionsNoRecursion(Mat img,string window_name,Mat ground){
     
     int color_difference = 20;
     int min_rect_width = 5;
@@ -493,19 +559,101 @@ vector<Rect> getTextRegionsNoRecursion(Mat img){
         }
     }
     
+    Mat textRegionsImage = img.clone();
+    for (int i = 0;i<segmentRects.size();i++) {
+        int i_region = i;
+        Scalar newVal( rng(256), rng(256), rng(256) );
+        for(int j=0;j<segmentRects.size();j++){
+            if(textRegionIntArray[j]==i_region){
+                rectangle(textRegionsImage,segmentRects[j].rect, newVal);
+            }
+        }
+    }
     
-    //TODO add code here that puts all rectangles that interesect together before returning the text regions.
+    //Gather intersecting text regions together
+    vector<Rect> intersectFinishedTextRegions = textRegions;
+    bool anyStillIntersecting = true;
+    while(anyStillIntersecting){
+        intersectFinishedTextRegions = encloseIntersectingRects(intersectFinishedTextRegions);
+        anyStillIntersecting = false;
+        for(int i=0;i<intersectFinishedTextRegions.size();i++){
+            for(int j=0;j<intersectFinishedTextRegions.size();j++){
+                if(i!=j && ((intersectFinishedTextRegions[i] & intersectFinishedTextRegions[j]).area() > 0) ){ anyStillIntersecting = true; }
+            }
+        }
+    }
     
-    return textRegions;
+    Mat vis = img.clone();
+    //Draw the detected text regions after intersections joined onto the image
+    for(int i=0;i<textRegions.size();i++){
+        rectangle(vis, textRegions[i].tl(), textRegions[i].br(), Scalar(0,0,255));
+    }
+    
+    //Draw the detected text regions after intersections joined onto the image
+    for(int i=0;i<intersectFinishedTextRegions.size();i++){
+        Scalar newVal( rng(256), rng(256), rng(256) );
+        rectangle(img, intersectFinishedTextRegions[i].tl(), intersectFinishedTextRegions[i].br(), Scalar(0,0,255));
+    }
+    
+    Mat poops[] = {textRegionsImage,vis,img,ground};
+    display_images(window_name,4,poops);
+    
+    
+    return intersectFinishedTextRegions;
 }
 
 //-------------------------------------------------------------------------------------------
 
+//Finds the DICE Coefficient, of a notice image. Given the rectangles corresponding to detected text regions and ground truths
+//Pre-requistite: No detected text regions must overlap and no ground truths must overlap
+float getDiceCoefficient(vector<Rect> trs, vector<Rect> gts){
+    
+    /*
+      "The DICE cooefficient is 2 times the Area of Overlap
+     (between the ground truth and the regions found by your program)
+     divided by the sum of the Area of the Ground Truth and the Area of the regions found by your program." - Ken
+     */
+    
+    //Check that no trs or gts overlap
+    for(int i=0;i<trs.size();i++){
+        for(int j=i+1;j<trs.size();j++){
+            assert((trs[i] & trs[j]).area() <= 0);
+        }
+    }
+    for(int i=0;i<gts.size();i++){
+        for(int j=i+1;j<gts.size();j++){
+            assert((gts[i] & gts[j]).area() == 0);
+        }
+    }
+    
+    //Total overlapping area of the detected text regions and the ground truths
+    float total_overlap_area = 0;
+    for(int i=0;i<trs.size();i++){
+        for(int j=0;j<gts.size();j++){
+            total_overlap_area += (trs[i] & gts[j]).area();
+        }
+    }
+    
+    //Total area of the ground truths
+    float ground_truths_area = 0;
+    for(int i=0;i<gts.size();i++){
+        ground_truths_area+=gts[i].area();
+    }
+    
+    //Total area of the detected text regions
+    float text_regions_area = 0;
+    for(int i=0;i<trs.size();i++){
+        text_regions_area+=trs[i].area();
+    }
+    
+    return (2*total_overlap_area) / (text_regions_area + ground_truths_area);
+}
+
 //This function finds the regions of text within an image (under development and doesn't do that at the moment)
-void find_text(string window_name,cv::Mat img){
+vector<Rect> find_text(string window_name,cv::Mat img,Mat ground,vector<Rect> ground_truths){
     
     //Declare variables
-    Mat contours_image, croppedImage;
+    // Mat contours_image, croppedImage;
     
     /*
      //Perform mean shift segmentation on the image
@@ -548,22 +696,9 @@ void find_text(string window_name,cv::Mat img){
      //Draw the contours of the image
      //Mat signsImg = fillContours(img, contoursWithNChildren);
      */
+    vector<Rect> textRegions = getTextRegionsNoRecursion(img,window_name,ground);
     
-    Mat img01, img02, img03, img1,img2,img3,img4,img5,img6;
-    //cv::pyrMeanShiftFiltering (img, img1, sp, sr, 1, TermCriteria(TermCriteria::MAX_ITER, 5, 1));
-    Mat vis = img.clone();
-    vector<Rect> textRegions = getTextRegionsNoRecursion(img);
-    for(int i=0;i<textRegions.size();i++){
-        cout << "now adding rectangle "+to_string(i) << endl;
-        rectangle(img, textRegions[i].tl(), textRegions[i].br(), Scalar(0,0,255));
-    }
-    
-    Mat poops[] = {img};
-    display_images(window_name,1,poops);
-    
-    //cv::Mat images[] = {meanShiftSegmentationImage,grayscaleMat,binaryMat};
-    //display_images(4,images);
-    
+    return textRegions;
 }
 
 
@@ -573,9 +708,14 @@ int main(int argc, char** argv){
     
     //Load images from their directory
     string path_to_images = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/notice-images/";
+    string path_to_grounds = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/notice-ground-truth-images/";
+    string path_to_ground_truths_json = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/text-positions.json";
     string path_to_shifts = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/mean-shifts/";
     const int number_of_images = 8;
     Mat images[number_of_images];
+    Mat grounds[number_of_images];
+    vector<vector<Rect>> ground_truths = read_ground_truths(path_to_ground_truths_json);
+    float dice_coeffs[number_of_images];
     
     //Process each image
     for(int i=0;i<number_of_images;i++){
@@ -584,10 +724,19 @@ int main(int argc, char** argv){
         string image_name = "Notice"+to_string(i+1)+".jpg";
         string mean_name = "mean-shift-"+to_string(i)+".jpg";
         images[i] = imread(path_to_shifts+mean_name);
+        grounds[i] = imread(path_to_grounds+image_name);
         if(images[i].empty()){ return -1; }
-        find_text("Notice "+to_string(i),images[i]);
-        std::cout << "Processed Notice "+to_string(i) << std::endl;
-        waitKey(0);
+        vector<Rect> detected_text_regions = find_text("Notice "+to_string(i),images[i],grounds[i],ground_truths[i]);
+        dice_coeffs[i] = getDiceCoefficient(detected_text_regions, ground_truths[i]);
     }
+    
+    float total_dice = 0;
+    for(int i=0;i<number_of_images;i++){
+        total_dice += dice_coeffs[i];
+        cout << "Notice"+to_string(i)+" DICE: "+to_string(dice_coeffs[i]) << endl;
+    }
+    
+    cout << "Average DICE Coefficient: "+to_string( total_dice / number_of_images ) << endl;
+    
     return 0;
 }
