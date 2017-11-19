@@ -17,7 +17,7 @@ using json = nlohmann::json;
 using namespace cv;
 using namespace std;
 
-//---------------------- VISION TECHNIQUES ---------------------------
+//-------------------------------------------- VISION TECHNIQUES -------------------------------------------------
 
 //This function Grayscales an image
 Mat grayscale(Mat img){
@@ -27,7 +27,7 @@ Mat grayscale(Mat img){
 }
 
 //This function turns a grayscale image into a binary image using apaptiveThresholding
-Mat apaptiveBinary(Mat grayscaleImage,int block_size,int offset, int output_value){
+Mat adaptiveBinary(Mat grayscaleImage,int block_size,int offset, int output_value){
     Mat binaryMat;
     adaptiveThreshold( grayscaleImage, binaryMat, output_value, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, block_size, offset );
     return binaryMat;
@@ -60,17 +60,21 @@ Mat open(Mat binaryImage,int n){
 //This function takes an image and the accepted color difference for pixels to be in the same region, returning a flood filled version of the image
 Mat floodFill( Mat img, int color_difference){
     CV_Assert( !img.empty() );
+    Mat flooded = img.clone();
     RNG rng = theRNG();
     Mat mask( img.rows+2, img.cols+2, CV_8UC1, Scalar::all(0) ); //The floodFill function requires that the rows and columns are this length
-    for(int y=0;y<img.rows;y++){
-        for(int x=0;x<img.cols;x++){
+    for(int y=0;y<flooded.rows;y++){
+        for(int x=0;x<flooded.cols;x++){
             if( mask.at<uchar>(y+1, x+1) == 0 ){
-                Scalar newVal( rng(256), rng(256), rng(256) );
-                floodFill( img, mask, Point(x,y), newVal, 0, Scalar::all(color_difference), Scalar::all(color_difference),4);
+                //Scalar newVal( rng(256), rng(256), rng(256) );
+                Point point(x,y);
+                Point3_<uchar>* p = img.ptr<Point3_<uchar>>(y,x);
+                Scalar pointColour(p->x,p->y,p->z);
+                floodFill( flooded, mask, Point(x,y), pointColour, 0, Scalar::all(color_difference), Scalar::all(color_difference),4);
             }
         }
     }
-    return img;
+    return flooded;
 }
 
 //This function takes an image and mean-shift parameters and returns a version of the image that has had mean shift segmentation performed on it
@@ -82,6 +86,7 @@ Mat meanShiftSegmentation( Mat img, int spatial_radius, int color_radius, int ma
 
 //-------------------------------------------FUNCTIONS TO MAKE USE OF------------------------------------------------------
 
+//This class represents the bounding rectangle of a segment from a mean-shift-segmented image. It has the bounding rectangle and the color of the segment.
 class segmentRectangle{
     public:
         Scalar color;
@@ -91,7 +96,6 @@ class segmentRectangle{
             return (lhs.color==rhs.color && lhs.rect==rhs.rect);
         }
 };
-
 
 //This function returns true if the two rectangles intersect
 bool intersect(Rect r1, Rect r2){
@@ -115,7 +119,6 @@ void enclose_in_angled_rectangle(cv::Mat img, vector<Point> contour) {
 
 //This function draws a red x-axis aligned rectangle around a contour in an image
 void enclose_in_rectangle(cv::Mat img, vector<Point> contour) {
-    static cv::RNG rng(12345);
     cv::Rect rect = cv::boundingRect(cv::Mat(contour));
     cv::Scalar color = cv::Scalar(0, 0, 255);
     for (int j = 0; j < 4; j++ ) {
@@ -206,14 +209,17 @@ vector<vector<Point>> getContoursWithNChildren(vector<vector<Point>> contours, v
 
 //This function takes an image & its contours and draws a rectangle around the contours' points
 Mat drawRectangles(Mat img, vector<vector<Point>> contours){
-    Mat rectanglesMat = img;
+    Mat rectanglesMat = img.clone();
     if ( !contours.empty() ) {
         for ( int i=0; i<contours.size(); i++ ) {
-            enclose_in_rectangle(rectanglesMat,contours[i]);
+            enclose_in_angled_rectangle(rectanglesMat, contours[i]);
         }
     }
     return rectanglesMat;
 }
+
+//This function gets the average pixel value of a component in an image
+
 
 //This function takes an image & its contours and outlines the contours with random colors
 Mat drawContours(Mat img, vector<vector<Point>> contours){
@@ -227,18 +233,6 @@ Mat drawContours(Mat img, vector<vector<Point>> contours){
     return contoursMat;
 }
 
-//This function takes an image & its contours and fills the contours with random colors
-Mat fillContours(Mat img, vector<vector<Point>> contours){
-    Mat contoursMat = img;
-    if ( !contours.empty() ) {
-        for ( int i=0; i<contours.size(); i++ ) {
-            Scalar colour( (rand()&255), (rand()&255), (rand()&255) );
-            drawContours( contoursMat, contours, i, colour,CV_FILLED);
-        }
-    }
-    return contoursMat;
-}
-
 //This function displays the images from a Mat array in a window (all images must be of the same color space, I think?)
 void display_images(string window_name, int n, cv::Mat images[n]){
     cv::Mat wind = images[0];
@@ -247,6 +241,24 @@ void display_images(string window_name, int n, cv::Mat images[n]){
     }
     namedWindow(window_name,cv::WINDOW_AUTOSIZE);
     imshow(window_name,wind);
+}
+
+//This function takes an image & its contours and fills each contour with its average pixel value
+Mat fillContours(Mat img, vector<vector<Point>> contours){
+    Mat contoursMat = img.clone();
+    if ( !contours.empty() ) {
+        for ( int i=0; i<contours.size(); i++ ) {
+            //Create mask to find average pixel value in original image
+            Mat labels = cv::Mat::zeros(img.size(), CV_8UC1);
+            drawContours(labels, contours, i, Scalar(255),CV_FILLED);
+            Mat poops[] = {labels};
+            display_images("d",1,poops);
+            Scalar average_color = mean(img, labels);
+            //Fill the contour with the average value of its pixels
+            drawContours( contoursMat, contours, i, average_color,CV_FILLED);
+        }
+    }
+    return contoursMat;
 }
 
 //This function takes an image and the accepted color difference for pixels to be in the same region, then returns an image with each segment enclosed with a bounding rectangle of its color.
@@ -289,6 +301,33 @@ vector<segmentRectangle> getSegmentsRectangles( Mat img, int color_difference, i
                     segmentRect.rect = boundingRectOfSegment;
                     srs.push_back(segmentRect);
                 }
+            }
+        }
+    }
+    return srs;
+}
+
+//This function takes an image and the accepted color difference for pixels to be in the same region, then returns an array of segmentRectangles in the image each of which is the bounding rectangle of a segment in the image, with the color of that segment.
+vector<segmentRectangle> getSegmentsRectanglesWithContours( Mat img, vector<vector<Point>> contours, int color_difference, int min_rect_width, int min_rect_height){
+    vector<segmentRectangle> srs;
+    CV_Assert( !img.empty() );
+    Mat mask( img.rows+2, img.cols+2, CV_8UC1, Scalar::all(0) ); //The floodFill function requires that the rows and columns are this length
+    
+    if ( !contours.empty() ) {
+        for ( int i=0; i<contours.size(); i++ ) {
+            
+            //Create mask to find average pixel value of the contour in the original image
+            Mat labels = cv::Mat::zeros(img.size(), CV_8UC1);
+            drawContours(labels, contours, i, Scalar(255),CV_FILLED);
+            Scalar average_color = mean(img, labels);
+            
+            //Get the bounding rectangle of the contour
+            Rect boundingRectOfContour = boundingRect(contours[i]);
+            if(boundingRectOfContour.width >= min_rect_width && boundingRectOfContour.height >= min_rect_height){
+                segmentRectangle segmentRect;
+                segmentRect.color = average_color;
+                segmentRect.rect = boundingRectOfContour;
+                srs.push_back(segmentRect);
             }
         }
     }
@@ -343,7 +382,7 @@ vector<Rect> encloseIntersectingRects(vector<Rect> textRegions){
     return intersectFinishedTextRegions;
 }
 
-//-------------------------- FINDING TEXT SPECIFICALLY ----------------------------------
+//------------------------------------------------ FINDING TEXT SPECIFICALLY --------------------------------------------------------
 
 //This function returns true if the second rectangle is enclosed within the first
 bool isEnclosing(Rect r1, Rect r2){
@@ -388,9 +427,10 @@ bool areRoughlyTheSameSize(Rect r1, Rect r2,float allowed_height_ratio, float al
 //  (are nearby, roughly same size, same color)
 bool couldBeTwoLetters(Rect r1, Rect r2,Scalar r1_color,Scalar r2_color){
     
+    //highscore: 0.916105
     float allowed_height_ratio = 1.82; // 1.8 splits up the s in 'This' and the g in 'grass' on last notice. 1.85 puts together the second and third sign on notice 4 (the blue 3)
     float allowed_width_ratio = 2.5;
-    float height_increase_for_overlap = 1.6;
+    float height_increase_for_overlap = 1.5;
     float width_increase_for_overlap = 3.5;
     float allowed_color_difference = 30;
     
@@ -399,8 +439,7 @@ bool couldBeTwoLetters(Rect r1, Rect r2,Scalar r1_color,Scalar r2_color){
                     && areTheSameColor(r1_color, r2_color,allowed_color_difference);
 }
 
-
-//
+//This function takes
 vector<segmentRectangle> getLettersInMyRegion(vector<segmentRectangle> segmentRects,int current_index,bool* inATextRegion, Mat img,Scalar newVal){
     
     vector<int> lettersInMyRegionIndexes;
@@ -442,71 +481,15 @@ vector<segmentRectangle> getLettersInMyRegion(vector<segmentRectangle> segmentRe
 //This function takes an image and returns a vector of rectangles that correspond to text regions within the image
 /*
  The way this function works is that it first finds all segments in the image.
- It then takes all the segmentRectangles (which represent the segments) and for each one, sees that with another segmentRectangle, could it be one of Two Letters.
+ It then takes all the segmentRectangles (which represent the segments) and for each one sees that it, with another segmentRectangle, could it be one of two Letters.
  Words are grouped together this way and then return.
  */
-vector<Rect> getTextRegionsWithRecursion(Mat img){
+vector<Rect> getTextRegions(Mat img,vector<vector<Point>> contours,string window_name,Mat ground){
     
     int color_difference = 20;
     int min_rect_width = 5;
     int min_rect_height = 7;
-    vector<segmentRectangle> segmentRects = getSegmentsRectangles(img, color_difference,min_rect_width,min_rect_height); //Proven to be deterministic (even with order of segmentRectangles returned)
-    
-    bool* inATextRegion = new bool[segmentRects.size()]; //Keeps track of which segments are already in text regions
-    
-    vector<Rect> textRegions;
-    
-    RNG rng = theRNG();
-    for(int i=0;i<segmentRects.size();i++){
-        
-        //If letter is already in a text region, then move on to the next letter
-        if(inATextRegion[i]){continue;}
-        
-        //Find all letters in this letter's text region
-        Scalar newVal( rng(256), rng(256), rng(256) );
-        vector<segmentRectangle> textRegion = getLettersInMyRegion(segmentRects, i,inATextRegion,img,newVal);
-        textRegion.push_back(segmentRects[i]); //Put the current letter into the text region as well
-        
-        //Mark these letters as in text regions
-        /* Not sure I need this -> maybe they are all already markedd as in text regions at this stage?
-         for(int j=0;j<textRegion.size();j++){
-         for(int k=0;k<segmentRects.size();k++){
-         if(textRegion[j]==segmentRects[k]){
-         inATextRegion[k] = true;
-         }
-         }
-         }
-         */
-        
-        //Add the enclosing rectangle of this text region to the textRegions
-        int tlx = 2147483647; int tly = 2147483647; int brx = -1; int bry = -1;
-        for (int i = 1;i<textRegion.size();i++) {
-            tlx = min(tlx, textRegion[i].rect.tl().x);
-            tly = min(tly, textRegion[i].rect.tl().y);
-            brx = max(brx, textRegion[i].rect.br().x);
-            bry = max(bry, textRegion[i].rect.br().y);
-        }
-        cv::Rect boundingRect(Point(tlx,tly),Point(brx,bry));
-        textRegions.push_back(boundingRect);
-    }
-    
-    //TODO add code here that puts all rectangles that interesect together before returning the text regions.
-    
-    return textRegions;
-}
-
-//This function takes an image and returns a vector of rectangles that correspond to text regions within the image
-/*
- The way this function works is that it first finds all segments in the image.
- It then takes all the segmentRectangles (which represent the segments) and for each one, sees that with another segmentRectangle, could it be one of Two Letters.
- Words are grouped together this way and then return.
- */
-vector<Rect> getTextRegionsNoRecursion(Mat img,string window_name,Mat ground){
-    
-    int color_difference = 20;
-    int min_rect_width = 5;
-    int min_rect_height = 7;
-    vector<segmentRectangle> segmentRects = getSegmentsRectangles(img, color_difference,min_rect_width,min_rect_height); //Proven to be deterministic (even with order of segmentRectangles returned)
+    vector<segmentRectangle> segmentRects = getSegmentsRectanglesWithContours(img,contours,color_difference,min_rect_width,min_rect_height); //Proven to be deterministic (even with order of segmentRectangles returned)
     
     //Create an int array to keep track of the graphs that make up text regions
     int* textRegionIntArray = new int[segmentRects.size()]; //Keeps track of which region each segment is in
@@ -583,6 +566,12 @@ vector<Rect> getTextRegionsNoRecursion(Mat img,string window_name,Mat ground){
         }
     }
     
+    Mat vis1 = img.clone();
+    //Draw the detected text regions after intersections joined onto the image
+    for(int i=0;i<segmentRects.size();i++){
+        rectangle(vis1, segmentRects[i].rect.tl(), segmentRects[i].rect.br(), Scalar(0,0,255));
+    }
+    
     Mat vis = img.clone();
     //Draw the detected text regions after intersections joined onto the image
     for(int i=0;i<textRegions.size();i++){
@@ -595,14 +584,16 @@ vector<Rect> getTextRegionsNoRecursion(Mat img,string window_name,Mat ground){
         rectangle(img, intersectFinishedTextRegions[i].tl(), intersectFinishedTextRegions[i].br(), Scalar(0,0,255));
     }
     
-    Mat poops[] = {textRegionsImage,vis,img,ground};
-    display_images(window_name,4,poops);
     
+    Mat poops[] = {vis1,textRegionsImage,img,ground};
+    imwrite("/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/detected-images/"+window_name+".jpg", img);
+    display_images(window_name,4,poops);
+    waitKey(0);
     
     return intersectFinishedTextRegions;
 }
 
-//-------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------
 
 //Finds the DICE Coefficient, of a notice image. Given the rectangles corresponding to detected text regions and ground truths
 //Pre-requistite: No detected text regions must overlap and no ground truths must overlap
@@ -656,53 +647,66 @@ vector<Rect> find_text(string window_name,cv::Mat img,Mat ground,vector<Rect> gr
     // Mat contours_image, croppedImage;
     
     /*
-     //Perform mean shift segmentation on the image
-     int spatial_radius = 80;
-     int color_radius = 45;
-     int maximum_pyramid_level = 0;
-     Mat meanShiftSegmentationImage = meanShiftSegmentation(img, spatial_radius, color_radius, maximum_pyramid_level);
-     */
+    //Perform mean shift segmentation on the image
+    int spatial_radius = 80;
+    int color_radius = 50;
+    int maximum_pyramid_level = 0;
+    Mat meanS = meanShiftSegmentation(img, spatial_radius, color_radius, maximum_pyramid_level);
+    */
+    
     
     //Flood fill the image
-    //int color_difference = 20;
-    //Mat floodFillImage = floodFill(img, color_difference);
+    int flood_fill_color_difference = 5;
+    Mat floodFillImage = floodFill(img, flood_fill_color_difference);
+
+    //Convert the image to grayscale
+    Mat grayscaleMat = grayscale(floodFillImage);
+
+    //Convert the grayscale image into a binary image
+    int block_size = 19;
+    int offset = 20;
+    int output_value = 255;
+    Mat binaryMat = binary(grayscaleMat,block_size,offset,output_value);
+
+    //Close and Open the image
+    int n = 1;
+    Mat openedMat = open(binaryMat,n);
+    n = 2;
+    Mat closedMat = close(openedMat,n);
+
+    //Find the contours within the image (Connected Components Analysis)
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+    findContours(binaryMat,contours,hierarchy,CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
+
+
+    //I think I should forget about this here
+    //Find and draw rectangles around the contours with more than 4 children
+    //vector<vector<Point>> contoursWithNChildren = getContoursWithNChildren(contours, hierarchy, 4);
+    //Mat signsImg = fillContours(img, contoursWithNChildren);
+    //Mat mins = drawRectangles(signsImg, contoursWithNChildren);
+
+    //Draw the contours of the image
+    Mat connected = fillContours(img, contours);
     
+    //Now, contours holds all of the connected components from our binary image.
     
-    /*
-     //Convert the image to grayscale
-     Mat grayscaleMat = grayscale(img);
-     
-     //Convert the grayscale image into a binary image
-     int block_size = 19;
-     int offset = 20;
-     int output_value = 255;
-     Mat binaryMat = apaptiveBinary(grayscaleMat,block_size,offset,output_value);
-     
-     
-     
-     //Close and Open the image
-     int n = 2;
-     Mat closedMat = close(binaryMat,n);
-     Mat openedMat = open(binaryMat,n);
-     
-     //Find the contours within the image (Connected Components Analysis)
-     vector<vector<Point>> contours;
-     vector<Vec4i> hierarchy;
-     //findContours(binaryMat,contours,hierarchy,CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
-     
-     //Find and draw rectangles around the contours with more than 4 children
-     //vector<vector<Point>> contoursWithNChildren = getContoursWithNChildren(contours, hierarchy, 4);
-     
-     //Draw the contours of the image
-     //Mat signsImg = fillContours(img, contoursWithNChildren);
-     */
-    vector<Rect> textRegions = getTextRegionsNoRecursion(img,window_name,ground);
+    //We want to make use of color as well as position when determining if these components make up text. So we will find the color for each of these components.
+    //The best way to do this, is to find the average value of the points in the component as they were in the original image.
     
+    Mat first[] = {img,floodFillImage};
+    Mat second[] = {grayscaleMat,binaryMat,openedMat,closedMat};
+    //Mat third[] = {connected};
+    //display_images("First",2,first);
+    //display_images("second",4,second);
+    //display_images("third",1,third);
+    
+    vector<Rect> textRegions = getTextRegions(img,contours,window_name,ground);
     return textRegions;
 }
 
 
-//-------------------------- MAIN PROGRAM ----------------------------------
+//------------------------------------------------ MAIN PROGRAM --------------------------------------------------------
 
 int main(int argc, char** argv){
     
@@ -722,11 +726,11 @@ int main(int argc, char** argv){
         
         //Read in the image
         string image_name = "Notice"+to_string(i+1)+".jpg";
-        string mean_name = "mean-shift-"+to_string(i)+".jpg";
+        string mean_name = "Notice"+to_string(i)+"-mpl50.jpg";
         images[i] = imread(path_to_shifts+mean_name);
         grounds[i] = imread(path_to_grounds+image_name);
         if(images[i].empty()){ return -1; }
-        vector<Rect> detected_text_regions = find_text("Notice "+to_string(i),images[i],grounds[i],ground_truths[i]);
+        vector<Rect> detected_text_regions = find_text("Notice"+to_string(i),images[i],grounds[i],ground_truths[i]);
         dice_coeffs[i] = getDiceCoefficient(detected_text_regions, ground_truths[i]);
     }
     
