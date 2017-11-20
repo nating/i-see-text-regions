@@ -120,13 +120,13 @@ As seen in the above image, this process is not perfect.
 
 The inside of two characters have been determined to be text. Fortunately, for the purpose of the problem this does not have an effect on finding the rectangle surrounding a text region on notices within an image.  
 
-Another problem that can be seen in the above image is that the dots of 'i' characters and '.' characters are not similar enough in size to their adjacent letters to be counted as text. This is a weakness of the solution, and is the reason that the test images to fall from a DICE score of 1 to around .97 on the first and fourth test image when compared to the ground truths accompanying this report.
+Another problem that can be seen in the above image is that the dots of 'i' characters and '.' characters are not similar enough to their adjacent letters in size to be counted as text. This is a weakness of the solution, and is the reason that the test images fall from an average DICE coefficient of 1 to around .97 on the first and fourth test image when compared to the ground truths accompanying this report.
 
-This process also finds segments that fit these criteria that are not text. This is the cause of DICE scores of around .95 in the sixth and eight test images when compared to the ground truths accompanying this report. This can be seen in the image below:  
+This process also finds segments that fit these criteria that are not text. This is the cause of the average DICE coefficient of the sixth and eight test images to be around .95 when compared to the ground truths accompanying this report. This can be seen in the image below:  
 <img src="./assets/report-images/incorrect-detection-example0.jpg" width="600"/>
 <img src="./assets/report-images/incorrect-detection-example1.jpg" width="700"/>
 
-The problem of segments being incorrectly determined to be lines of text can be reduced by specifying that text regions must be a certain size, but this does not eliminate the issue.  
+The problem of segments being incorrectly determined to be lines of text could be reduced by specifying that text regions must be a certain size, but that would not completely eliminate the issue.  
 The program does not make sure that regions of text are of a certain size. This is so that text regions of any size can be identified.
 
 ### 7: Finding regions of text
@@ -140,17 +140,19 @@ This is the criteria for a character of a line of text to be '*in the same text 
 * The ratio of their bounding rectangle’s heights is above a threshold.
 * The euclidean difference between the segments’ average pixel value is below a certain threshold.
 
-If any character from a line of text is deemed to be '*in the same region*' as a character from another line of text, then the two lines of text are considered to be in the same region.
+If any character from a line of text is deemed to be '*in the same region*' as a character from another line of text, then the two lines of text are considered to be in the same text region.
 
 **Regions of text represented with their characters displayed in the same colour:**  
 <img src="./assets/textRegions/Notice0.jpg" width="500"/>
 
 ## Results
 
-An average DICE coefficient was calculated for each image with the equation:  
+An average DICE coefficient was calculated for each test image with the equation:  
 <img src="./assets/report-images/dice-coefficient-equation.jpg" width="500"/>
 
-Here are the results:  
+Here are the average DICE coefficients for test each image (the text regions found by the program are on the left):  
+
+---
 
 'Notice 1' Average DICE Coefficient: **0.979922**  
 <img src="./assets/textRegionRectangles/Notice0.jpg" width="400"/><img src="./assets/ground-truths/Notice1.jpg" width="400"/>
@@ -192,19 +194,19 @@ Here are the results:
 
 ---
 
-Average DICE coefficient across all test images: **0.959611**.
+Average DICE coefficient across all 8 test images: **0.959611**.
 
 ## Discussion of Results
 
-A casual observer might think that the program was more successful in determining regions of text in 'Notice 3' than 'Notice 8', but the average DICE coefficient of each image does not reflect this. This particular example is because the program thinks characters in 'Notice 3' are higher than they really are, and has misinterpreted components of 'Notice 8' as text. Perhaps misinterpreting components as text should be penalised more than classifying characters as containing more points, if a different metric was to be used in calculating the accuracy of the program.  
+A casual observer might think that the program was more successful in determining regions of text in 'Notice 3' than 'Notice 8', but the average DICE coefficient of each image does not reflect this. This particular example is because the program thinks characters in 'Notice 3' are higher than they really are, and has misinterpreted components of 'Notice 8' as text. Perhaps misinterpreting components as text should be penalised more than classifying characters as containing more points if a different metric was to be used in calculating the accuracy of the program.  
 A better metric might make use of how many pixels of characters are successfully/incorrectly classified as text/not-text in the image, but finding the exact pixels of the text rather than the regions that contain the text is a different problem.
 
 An observation of the ground truths is that the ground truth for 'Notice 7' has decided to classify an area with lines of text as one text region where as the program has decided to classify it as two text regions. This causes the average DICE coefficient for the image to be 0.956966. Different people could be of the opinion that the program has correctly interpreted the below text as two regions instead of one.  
-<img src="./assets/report-images/ground-truth-discrepancy.jpg" width="300"/>
+<img src="./assets/report-images/ground-truth-discrepancy.jpg" width="500"/>
 
 ## Closing Notes for Improvement
 
-The program is not 100% accurate, and that can be seen not only in the average DICE coefficients for the test images, but is clear when reviewing the regions of the images that the program has determined to be text. The program could be improved by improving the process in which it gets its segments of the image, and by improving the process by which it deems segments to be text.  
+The program is not 100% accurate, and that can be seen not only in the average DICE coefficients for the test images when comparing them to the ground truths, but is clear when reviewing the regions of the images that the program has determined to be text. The program could be improved by improving the process in which it gets its segments of the image, and by improving the process by which it deems segments to be text.  
 The option of using mathematical morphology to get rid of noise around characters along with the other processes was explored, but left out of the final iteration of the program's design as an implementation of it that was beneficial for every test image could not be found.  
 The way in which the program determines whether segments are part of the same text is also rudimentary, and could be improved maybe by incorporating stroke width into the comparison of the segments.
 
