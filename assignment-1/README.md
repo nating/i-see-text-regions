@@ -61,19 +61,19 @@ That is, for every pixel, we take the values in its 3 channels in e.g. RGB and c
 
 The difference in the brightness of text and notice backgrounds is generally very high to make the characters easier to read. This means that when the image is converted into binary, the text and notice backgrounds are extremely likely to be separated to black and white or white and black respectively.
 
-The program creates the binary image by setting all pixels in the grayscale image with a value above the threshold to 255 and every pixel less than or equal to the threshold to 0. The threshold is determined using Otsu's method. Binary thresholding separates the pixels in a grayscale image into two classes, and Otsu's method finds the threshold that minimises the weighted sum of the variance of pixel values within the two classes. Otsu's method what the variance in both classes is for every single possible threshold, then does a weighted sum (the weights come from the probability of the pixels in each class) to find what the variance in both classes is for that threshold. The threshold that gives the minimum intra-class variance is used to create the binary image.
+The program creates the binary image by setting all pixels in the grayscale image with a value above the threshold to 255 and every pixel less than or equal to the threshold to 0. The threshold is determined using Otsu's method. Binary thresholding separates the pixels in a grayscale image into two classes, and Otsu's method finds the threshold that minimises the weighted sum of the variance of pixel values within the two classes. Otsu's method finds what the variance is in both classes for every single possible threshold, then does a weighted sum (the weights come from the probability of the a pixel being in either class) to find what the variance in both classes is for that threshold. The threshold that gives the minimum intra-class variance is used to create the binary image.
 
 **Grayscale image converted to binary:**  
 <img src="./assets/binary/Notice0.jpg" width="500"/>
 
 ### Step 4: Connected Components Analysis
 
-Next, the program performs connected components analysis on the binary image in order to find gather the points of each component in the image. Some of these components will be characters in the text from the notices.
+Next, the program performs connected components analysis on the binary image in order to find the points of each component in the image. Some of these components will be characters in the text from the notices.
 
 The algorithm for connected components involves:
 1. Stepping through the pixels, and:
   * If their value is not zero, and their previous neighbours are: assign them a new label to note that they are part of a new component.
-  * If their value is not zero and neither are their previous neighbours: assign them the same label as their neighbours to note that they are part of the same component. *(If their some previous neighbours have different labels, they are now all joined up to have the same label)*  
+  * If their value is not zero and neither are their previous neighbours: assign them the same label as their neighbours to note that they are part of the same component. *(If some of their previous neighbours have different labels, join them up to have the same label)*  
 2. Passing over the image once more to set labels of components that are connected to have the same label value.
 
 Once connected components analysis has been performed on the image, there is a record of the points that are contained in every component.
@@ -81,24 +81,24 @@ Once connected components analysis has been performed on the image, there is a r
 **Each component in the image flood filled to a different colour, to show that the components have been found:**  
 <img src="./assets/connected/Notice0.jpg" width="500"/>
 
-This process used up to this point is not perfect, and already some text may be lost from the image. If the difference between characters and the background of the notices is not clear, then the components that represent text might have more points than they should. This can lead to them not being classified as text later in the program.
+The process used up to this point is not perfect, and already some text may be lost from the image. If the difference between characters and the background of the notices is not clear, then the components that represent text might have more points than they should. This can lead to them not being classified as text later in the program.
 Below is an example from the test images, that showcases how components might contain more pixels than just the associated character of text. In this example, the output text region still contains all of the text but is higher than the text region in the ground truth for the image, causing the DICE coefficient for the image to be .92. 
 
 <img src="./assets/report-images/incorrect-segment-extraction.jpg" width="700"/>
 
-### 5: Getting the Average Colour each component
+### 5: Getting the Average Colour of each component
 
 Now that the program has the points for every component in the image, it creates an object to represent each component. Each object has the bounding rectangle of the component and the average pixel value of its points in the original image.  
-The program does not need the points of the components from here on. The bouncing rectangle and the average colour of the components is enough for the process the program uses to to determine whether they are text.
+The program does not need the points of the components from here on. The bouncing rectangles and the average colours of the components are enough for the process the program uses to to determine whether they are text.
 
-To get the average colour of a component, a mask is made using the component's points to find the only its pixels from the original image. To get the average colour of the pixels in the component, the average for each channel in the its pixels is computed and used for that channel.
+To get the average colour of a component, a mask is made using the component's points to find only the pixels inside that component from the original image. To get the average colour of the component's pixel values, the average pixel value for each of its channels is computed and used for that channel.
 
 **An example mask of a component from the image:**  
 <img src="./assets/report-images/mask-example.jpg" width="500"/>
 
 ### 6: Finding Lines of Text
 
-Lines of text are made up of at least two characters. Therefore the program looks at each of the segments it has found and, if it is sufficiently similar to another segment that is located nearby horizontally in the image, considers it a letter. The program assumes that the notices in an input image are upright enough that at least one pixel of each character in a line of text is on the same horizontal line in the image as one pixel of any adjacent characters in the line of text.
+Lines of text are made up of at least two characters. Therefore the program looks at each segment it has found and, if it is sufficiently similar to another segment that is located nearby horizontally in the image, considers it a letter. The program assumes that the notices in an input image are upright enough that at least one pixel of each character in a line of text is on the same horizontal line in the image as one pixel of any adjacent characters in the line of text.
 
 The criteria for two segments being part of a line of text together are:
 * Both segments are within a certain distance (relative to their width) of each other horizontally.
@@ -118,9 +118,9 @@ Here is an example of what the outcome of this process is. Connected nodes are s
 
 As seen in the above image, this process is not perfect.  
 
-The inside of two characters have been determined to be text. Fortunately for the purpose of the program, this does not effect finding the rectangle surrounding a text region on notices within an image.  
+The inside of two characters have been determined to be text. Fortunately, for the purpose of the problem this does not have an effect on finding the rectangle surrounding a text region on notices within an image.  
 
-Another problem that can be seen in the above image is that the dots of 'i' characters and '.' characters are not similar enough in size to their adjacent letters to be counted as text. This is a weakness of the solution, and what causes the test images to fall from a DICE score of 1 to around .97 on the first and fourth test image when compared to the ground truths accompanying this report.
+Another problem that can be seen in the above image is that the dots of 'i' characters and '.' characters are not similar enough in size to their adjacent letters to be counted as text. This is a weakness of the solution, and is the reason that the test images to fall from a DICE score of 1 to around .97 on the first and fourth test image when compared to the ground truths accompanying this report.
 
 This process also finds segments that fit these criteria that are not text. This is the cause of DICE scores of around .95 in the sixth and eight test images when compared to the ground truths accompanying this report. This can be seen in the image below:  
 <img src="./assets/report-images/incorrect-detection-example0.jpg" width="600"/>
