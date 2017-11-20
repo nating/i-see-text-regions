@@ -14,8 +14,8 @@ This report is on an OpenCV program developed to locate text on notices.
 ## 1. Introduction
 
 The problem is to locate printed text on notices. An OpenCV program was developed to take in images containing notices and locate the regions within the images that contain text.  
-The initial plan during development was to locate notices within the images and then locate the regions of text within the notices. This would make it easier to determine what parts of the image were text, as notices are unlikely to contain many components other than their text, and the program would not have to deal with the noise which is more common outside of the notices. The first attempts at designing the program had in mind to identify notices in images, but no technique was found to successfully find the notices in every sample image.  
-Instead, later the focus of the program became to locate text within the images under the assumption that the text will take up a reasonable portion of the images.  
+The initial plan during development was to locate notices within the images and then locate the regions of text within the notices. This would make it easier to determine what parts of the image were text, as notices are unlikely to contain many components other than their text, and the program would not have to deal with the noise which is more common outside of the notices. The first attempts at designing the program had in mind to identify notices in images, but no technique was found to successfully find the notices in every test image.  
+Instead, the focus of the program became to locate text within the images under the assumption that the notice will take up a reasonable portion of the images.  
 
 ## 3. Overview of the Solution
 
@@ -23,15 +23,16 @@ To find the regions of text within an image, the program:
 1. Performs Mean Shift Segmentation on the image
 2. Converts the image to Grayscale
 3. Converts the grayscale image to a binary one with OTSU thresholding
-4. Does connected components components analysis on the image to find the different components
+4. Performs connected components components analysis on the image to find the different components
 5. Creates segment objects for each component in the binary image, with their bounding rectangle and average colour in the original image
 6. Groups together segments that make up lines of text
 7. Groups together lines of text that make up text regions
 
 ## 4. Technical Details of Solution
 
-To aid the description of the process of finding text regions in an image, we will use this example:  
-<img src="./assets/notice-images/Notice1.jpg" width="300" />
+To aid the description of the process of finding text regions in an image, we will use this example image:  
+
+<img src="./assets/images/Notice1.jpg" width="500" />
 
 ### Step 1: Perform Mean Shift Segmentation on the Image.
 
@@ -45,16 +46,16 @@ Why the image below looks the way it does, and why that's a good thing
 >
 
 **Result of mean-shift-segmentation:**  
-<img src="./assets/mean-shifts/Notice0.jpg" width="300"/>
+<img src="./assets/mean-shifts/Notice0.jpg" width="500"/>
 
 ### Step 2: Convert the image to Grayscale
 
-Once the mean-shift-segmentation has been done on the image, we convert it to grayscale.
+Once the mean-shift-segmentation has been performed, we convert the image to grayscale.
 That is, for every pixel, we take the values in its 3 channels in e.g. RGB and convert them to one channel using this equation:  
-<img src="./assets/report-images/rgb-to-grayscale-equation.png" width="300" />
+<img src="./assets/report-images/rgb-to-grayscale-equation.jpg" width="500" />
 
 **Image converted to grayscale:**  
-<img src="./assets/grayscale/Notice0.jpg" width="300"/>
+<img src="./assets/grayscale/Notice0.jpg" width="500"/>
 
 ### Step 3: Convert the image to Binary
 
@@ -63,7 +64,7 @@ The difference in the brightness of text and notice backgrounds is generally ver
 The program creates the binary image by setting all pixels in the grayscale image with a value above the threshold to 255 and every pixel less than or equal to the threshold to 0. The threshold is determined using Otsu's method. Binary thresholding separates the pixels in a grayscale image into two classes, and Otsu's method finds the threshold that minimises the weighted sum of the variance of pixel values within the two classes. Otsu's method what the variance in both classes is for every single possible threshold, then does a weighted sum (the weights come from the probability of the pixels in each class) to find what the variance in both classes is for that threshold. The threshold that gives the minimum intra-class variance is used to create the binary image.
 
 **Grayscale image converted to binary:**  
-<img src="./assets/binary/Notice0.jpg" width="300"/>
+<img src="./assets/binary/Notice0.jpg" width="500"/>
 
 ### Step 4: Connected Components Analysis
 
@@ -78,11 +79,12 @@ The algorithm for connected components involves:
 Once connected components analysis has been performed on the image, there is a record of the points that are contained in every component.
 
 **Each component in the image flood filled to a different colour, to show that the components have been found:**  
-<img src="./assets/connected/Notice0.jpg" width="300"/>
+<img src="./assets/connected/Notice0.jpg" width="500"/>
 
 This process used up to this point is not perfect, and already some text may be lost from the image. If the difference between characters and the background of the notices is not clear, then the components that represent text might have more points than they should. This can lead to them not being classified as text later in the program.
-Below is an example from the test images, that showcases how components might contain more pixels than just the associated character of text. In this example, the output text region still contains all of the text but is higher than the text region in the ground truth for the image, causing the DICE coefficient for the image to be .92.  
-<img src="./assets/report-images/incorrect-segment-extraction.jpg" width="300"/>
+Below is an example from the test images, that showcases how components might contain more pixels than just the associated character of text. In this example, the output text region still contains all of the text but is higher than the text region in the ground truth for the image, causing the DICE coefficient for the image to be .92. 
+
+<img src="./assets/report-images/incorrect-segment-extraction.jpg" width="700"/>
 
 ### 5: Getting the Average Colour each component
 
@@ -92,7 +94,7 @@ The program does not need the points of the components from here on. The bouncin
 To get the average colour of a component, a mask is made using the component's points to find the only its pixels from the original image. To get the average colour of the pixels in the component, the average for each channel in the its pixels is computed and used for that channel.
 
 **An example mask of a component from the image:**  
-<img src="./assets/report-images/mask-example.jpg" width="300"/>
+<img src="./assets/report-images/mask-example.jpg" width="500"/>
 
 ### 6: Finding Lines of Text
 
@@ -112,7 +114,7 @@ After this process, nodes that are connected represent lines of text.
 Here is an example of what the outcome of this process is. Connected nodes are shown in the same colour.
 
 **A representation of lines of text having been found in an image:**
-<img src="./assets/linesOfText/Notice0.jpg" width="300"/>
+<img src="./assets/linesOfText/Notice0.jpg" width="500"/>
 
 As seen in the above image, this process is not perfect.  
 
@@ -121,8 +123,8 @@ The inside of two characters have been determined to be text. Fortunately for th
 Another problem that can be seen in the above image is that the dots of 'i' characters and '.' characters are not similar enough in size to their adjacent letters to be counted as text. This is a weakness of the solution, and what causes the test images to fall from a DICE score of 1 to around .97 on the first and fourth test image when compared to the ground truths accompanying this report.
 
 This process also finds segments that fit these criteria that are not text. This is the cause of DICE scores of around .95 in the sixth and eight test images when compared to the ground truths accompanying this report. This can be seen in the image below:  
-<img src="./assets/report-images/incorrect-detection-example0.jpg" width="400"/>
-<img src="./assets/report-images/incorrect-detection-example1.jpg" width="500"/>
+<img src="./assets/report-images/incorrect-detection-example0.jpg" width="600"/>
+<img src="./assets/report-images/incorrect-detection-example1.jpg" width="700"/>
 
 The problem of segments being incorrectly determined to be lines of text can be reduced by specifying that text regions must be a certain size, but this does not eliminate the issue.  
 The program does not make sure that regions of text are of a certain size. This is so that text regions of any size can be identified.
@@ -141,52 +143,52 @@ This is the criteria for a character of a line of text to be '*in the same text 
 If any character from a line of text is deemed to be '*in the same region*' as a character from another line of text, then the two lines of text are considered to be in the same region.
 
 **Regions of text represented with their characters displayed in the same colour:**  
-<img src="./assets/textRegions/Notice0.jpg" width="300"/>
+<img src="./assets/textRegions/Notice0.jpg" width="500"/>
 
 ## Results
 
 An average DICE coefficient was calculated for each image with the equation:  
-<img src="./assets/report-images/dice-coefficient-equation.jpg" width="300"/>
+<img src="./assets/report-images/dice-coefficient-equation.jpg" width="500"/>
 
 Here are the results:  
 
 'Notice 1' Average DICE Coefficient: **0.979922**  
-<img src="./assets/textRegionRectangles/Notice0.jpg" width="250"/><img src="./assets/ground-truths/Notice1.jpg" width="250"/>
+<img src="./assets/textRegionRectangles/Notice0.jpg" width="400"/><img src="./assets/ground-truths/Notice1.jpg" width="400"/>
 
 ---
 
 'Notice 2' Average DICE Coefficient: **0.978567**  
-<img src="./assets/textRegionRectangles/Notice1.jpg" width="250"/><img src="./assets/ground-truths/Notice2.jpg" width="250"/>
+<img src="./assets/textRegionRectangles/Notice1.jpg" width="400"/><img src="./assets/ground-truths/Notice2.jpg" width="400"/>
 
 ---
 
 'Notice 3' Average DICE Coefficient: **0.929020**  
-<img src="./assets/textRegionRectangles/Notice2.jpg" width="250"/><img src="./assets/ground-truths/Notice3.jpg" width="250"/>
+<img src="./assets/textRegionRectangles/Notice2.jpg" width="400"/><img src="./assets/ground-truths/Notice3.jpg" width="400"/>
 
 ---
 
 'Notice 4' Average DICE Coefficient: **0.984273**  
-<img src="./assets/textRegionRectangles/Notice3.jpg" width="250"/><img src="./assets/ground-truths/Notice4.jpg" width="250"/>
+<img src="./assets/textRegionRectangles/Notice3.jpg" width="400"/><img src="./assets/ground-truths/Notice4.jpg" width="400"/>
 
 ---
 
 'Notice 5' Average DICE Coefficient: **0.965611**  
-<img src="./assets/textRegionRectangles/Notice4.jpg" width="250"/><img src="./assets/ground-truths/Notice5.jpg" width="250"/>
+<img src="./assets/textRegionRectangles/Notice4.jpg" width="400"/><img src="./assets/ground-truths/Notice5.jpg" width="400"/>
 
 ---
 
 'Notice 6' Average DICE Coefficient: **0.941424**  
-<img src="./assets/textRegionRectangles/Notice5.jpg" width="250"/><img src="./assets/ground-truths/Notice6.jpg" width="250"/>
+<img src="./assets/textRegionRectangles/Notice5.jpg" width="400"/><img src="./assets/ground-truths/Notice6.jpg" width="400"/>
 
 ---
 
 'Notice 7' Average DICE Coefficient: **0.941101**  
-<img src="./assets/textRegionRectangles/Notice6.jpg" width="250"/><img src="./assets/ground-truths/Notice7.jpg" width="250"/>
+<img src="./assets/textRegionRectangles/Notice6.jpg" width="400"/><img src="./assets/ground-truths/Notice7.jpg" width="400"/>
 
 ---
 
 'Notice 8' Average DICE Coefficient: **0.956966**  
-<img src="./assets/textRegionRectangles/Notice7.jpg" width="250"/><img src="./assets/ground-truths/Notice8.jpg" width="250"/>
+<img src="./assets/textRegionRectangles/Notice7.jpg" width="400"/><img src="./assets/ground-truths/Notice8.jpg" width="400"/>
 
 ---
 
