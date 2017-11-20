@@ -34,7 +34,7 @@ To find the regions of text within an image, the program:
 
 To aid the description of the process of finding text regions in an image, we will use this example image:  
 
-<img src="./assets/images/Notice1.jpg" width="500" />
+<img src="visionwork/assignment-1/assets/binary/Notice0.jpg" width="500" />
 
 ### Step 1: Perform Mean Shift Segmentation on the Image.
 
