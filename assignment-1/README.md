@@ -1,4 +1,9 @@
 
+#### TODO
+
+* Refactor code: (change names of variables, comment code, separate modules into different files, delete code that no longer makes sense)
+* Write code to print each image for every step of the process
+
 
 # Locating Printed Text on Notices
 
@@ -13,7 +18,6 @@ This report is on an OpenCV program developed to locate text on notices.
 3. Technical Details of Solution < This should include issues/problems (and suggestions for improvements if possible).>
 4. Discussion of Results < discussion of the results including any issues/problems with the metrics and the ground truth (and suggestions for improvements if possible) >
 8. Overview of Source Code
-9. Thanks
 
 
 ## Introduction
@@ -28,32 +32,19 @@ This report details the program developed for locating text on notices, the prob
 
 ## Overview of the Solution
 
-The steps involved in the program are:
-* Read in image
-* Perform Mean Shift Segmentation on the image
-* Convert the image to Grayscale
-* Convert the grayscale image to a binary one with OTSU thresholding
-* Do connected components components analysis on the image
-* For every component in the image of a certain size, I find the average color of the component in the original image
-*
+To find the regions of text within an image, the program:
+* Performs Mean Shift Segmentation on the image, flood filling each segment
+* Converts the image to Grayscale
+* Converts the grayscale image to a binary one with OTSU thresholding
+* Does connected components components analysis on the image to find the different components
+* Groups together components that make up lines of text
+* Groups together lines of text that make up text regions
 
 
 
-#################### NOTES FOR MAKING SOLUTION BETTER
-
-* Text regions must be of a certain height and width in terms of pixels for them to count (gets rid of top of notice 2, top of notice 5)
-
-## What to implement
-
-components = getComponents(img);
-
-linesOfText = findLinesOfText(img,components); //Checks which components 'couldBeLetters' with each other horizontally.
-
-textRegions = joinLinesOfText(img,linesOfText); //Checks if characters within lines of text 'couldBeLetters' (using height) with other lines of text, and if so, joins them.
 
 
 
-'linesOfText' should be a vector<vector<SegmentRect>> which is a list of lists of characters ( a list of lines of text )
 
 
 
