@@ -206,8 +206,8 @@ An observation of the ground truths is that the ground truth for 'Notice 7' has 
 
 ## Closing Notes for Improvement
 
-The program is not 100% accurate, and that can be seen not only in the average DICE coefficients for the test images when comparing them to the ground truths, but is clear when reviewing the regions of the images that the program has determined to be text. The program could be improved by improving the process in which it gets its segments of the image, and by improving the process by which it deems segments to be text.  
-The option of using mathematical morphology to get rid of noise around characters along with the other processes was explored, but left out of the final iteration of the program's design as an implementation of it that was beneficial for every test image could not be found.  
+The program is not 100% accurate, and that can be seen not only in the average DICE coefficients for the test images when comparing them to the ground truths, but is clear when reviewing the regions of the images that the program has determined to be text. The program could be made better by improving the process in which it gets its segments of the image, and by improving the process by which it deems segments to be text.  
+Among other processes the option of using mathematical morphology to get rid of noise around characters was explored, but did not make it to the final iteration of the program's design, as tested parameters for different operations did not produce an improvement for any test image without producing a deterioration in another.  
 The way in which the program determines whether segments are part of the same text is also rudimentary, and could be improved maybe by incorporating stroke width into the comparison of the segments.
 
 The program also makes the assumption that the notices in the images are reasonably upright so that adjacent characters in a line of text will contain at least one pixel each that lay on the same horizontal line within the image. Were the program not to make this assumption, it could also locate text regions on sideways notices in images.
