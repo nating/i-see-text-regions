@@ -2,6 +2,9 @@
 //  extra-functions.h
 //  assignment-1
 //
+//  This file contains support functions for the 'Locate text on Notices' program.
+//  https://github.com/nating/visionwork/blob/master/assignment-1/src/assignment-1/extra-functions.h
+//
 //  Created by Geoffrey Natin on 20/11/2017.
 //  Copyright © 2017 nating. All rights reserved.
 //
@@ -12,7 +15,7 @@
 using namespace cv;
 using namespace std;
 
-//-------------------------------------------FUNCTIONS TO MAKE USE OF------------------------------------------------------
+//------------------------------------------- EXTRA FUNCTIONS FOR VISION ------------------------------------------------------
 
 //This class represents the bounding rectangle of a segment from a mean-shift-segmented image. It has the bounding rectangle and the color of the segment.
 class segmentRectangle{

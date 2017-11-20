@@ -2,6 +2,10 @@
 //  vision-techniques.h
 //  assignment-1
 //
+//  The purpose of the functions in this file is to be able to implement vision techniques with a single function call, abstracting them to a higher level.
+//  The functions all return copys of images, rather than the opencv norm of passing in output parameters (for developers who prefer it that way)
+//  https://github.com/nating/visionwork/blob/master/assignment-1/src/assignment-1/vision-techniques.h
+//
 //  Created by Geoffrey Natin on 19/11/2017.
 //  Copyright © 2017 nating. All rights reserved.
 //

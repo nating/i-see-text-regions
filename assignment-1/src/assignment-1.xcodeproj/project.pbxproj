@@ -28,6 +28,7 @@
 		1AB9BC7A1FA11F1D00872DF3 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		1AD1419F1FC24A98000423A8 /* vision-techniques.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "vision-techniques.h"; sourceTree = "<group>"; };
 		1AD141A01FC25FE5000423A8 /* extra-functions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "extra-functions.h"; sourceTree = "<group>"; };
+		1AD141A11FC301F4000423A8 /* finding-text.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "finding-text.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +65,7 @@
 				1AAEC1781FA347D30015850E /* json.hpp */,
 				1AD1419F1FC24A98000423A8 /* vision-techniques.h */,
 				1AD141A01FC25FE5000423A8 /* extra-functions.h */,
+				1AD141A11FC301F4000423A8 /* finding-text.h */,
 			);
 			path = "assignment-1";
 			sourceTree = "<group>";
