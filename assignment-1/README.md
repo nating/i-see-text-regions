@@ -1,3 +1,5 @@
+*This is a report for CS4053 written by Geoffrey Natin 14318196 on 17/11/17*
+
 # Locating Printed Text on Notices
 
 This report is on an OpenCV program developed to locate text on notices.
