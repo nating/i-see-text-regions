@@ -211,24 +211,3 @@ Among other processes the option of using mathematical morphology to get rid of 
 The way in which the program determines whether segments are part of the same text is also rudimentary, and could be improved maybe by incorporating stroke width into the comparison of the segments.
 
 The program also makes the assumption that the notices in the images are reasonably upright so that adjacent characters in a line of text will contain at least one pixel each that lay on the same horizontal line within the image. Were the program not to make this assumption, it could also locate text regions on sideways notices in images.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/
