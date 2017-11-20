@@ -32,7 +32,7 @@ void create_ground_truth_images(string path_to_images,string path_to_ground_trut
             Point p0 = Point(z.value()[0][0],z.value()[0][1]);
             Point p1 = Point(z.value()[1][0],z.value()[1][1]);
             Rect r = Rect(p0,p1);
-            rectangle(img,r,Scalar(0,0,255));
+            rectangle(img,r,Scalar(0,0,255),2);
         }
         imwrite(path_to_ground_truth_images+name, img);
     }
@@ -62,7 +62,8 @@ vector<vector<Rect>> read_ground_truths(string path_to_ground_truths_json){
 int main(int argc, char** argv){
     
     //Define filepaths
-    string path_to_images = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/notice-images/";
+    string path_to_images = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/images/";
+    string path_to_ground_truths = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/ground-truths/";
     string path_to_ground_truths_json = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/text-positions.json";
     string path_to_shifts = "/Users/GeoffreyNatin/Documents/GithubRepositories/visionwork/assignment-1/assets/mean-shifts/";
     
@@ -79,14 +80,13 @@ int main(int argc, char** argv){
         
         //Read in the image
         string image_name = "Notice"+to_string(i+1)+".jpg";
-        string mean_name = "Notice"+to_string(i)+"-mpl50.jpg";
+        string mean_name = "Notice"+to_string(i)+".jpg";
         images[i] = imread(path_to_shifts+mean_name);
         if(images[i].empty()){ cout << "Image "+to_string(i)+" empty. Ending program." << endl; return -1; }
         
         //Find text regions and get DICE coefficient
-        vector<Rect> detected_text_regions = find_text(images[i]);
+        vector<Rect> detected_text_regions = find_text(i,images[i]);
         dice_coeffs[i] = getDiceCoefficient(detected_text_regions, ground_truths[i]);
-        
     }
     
     //Calculate DICE coefficients

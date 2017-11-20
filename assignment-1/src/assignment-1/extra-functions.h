@@ -89,4 +89,19 @@ Mat fillContours(Mat img, vector<vector<Point>> contours){
 }
 
 
+//This function takes an image & its contours and fills each contour with the average pixel value within the contour
+Mat fillContoursRandom(Mat img, vector<vector<Point>> contours){
+    Mat contoursMat = img.clone();
+    RNG rng = theRNG();
+    if ( !contours.empty() ) {
+        for ( int i=0; i<contours.size(); i++ ) {
+            Scalar newVal(rng(256),rng(256),rng(256));
+            //Fill the contour with the average value of its pixels
+            drawContours( contoursMat, contours, i, newVal,CV_FILLED);
+        }
+    }
+    return contoursMat;
+}
+
+
 #endif /* extra_functions_h */

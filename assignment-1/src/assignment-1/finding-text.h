@@ -392,22 +392,18 @@ float getDiceCoefficient(vector<Rect> trs, vector<Rect> gts){
 }
 
 //This function returns a vector rectangles represent the bounding rectangles of the text regions within the image
-vector<Rect> find_text(cv::Mat img){
+vector<Rect> find_text(int i,cv::Mat img){
     
     /*
      //Perform mean shift segmentation on the image
      int spatial_radius = 80;
-     int color_radius = 50;
+     int color_radius = 55;
      int maximum_pyramid_level = 0;
      Mat meanS = meanShiftSegmentation(img, spatial_radius, color_radius, maximum_pyramid_level);
      */
     
-    //Flood fill the image
-    int flood_fill_color_difference = 5;
-    Mat floodFillImage = floodFill(img, flood_fill_color_difference);
-    
     //Convert the image to grayscale
-    Mat grayscaleMat = grayscale(floodFillImage);
+    Mat grayscaleMat = grayscale(img);
     
     //Convert the grayscale image into a binary image
     int block_size = 19;
@@ -421,7 +417,7 @@ vector<Rect> find_text(cv::Mat img){
     findContours(binaryMat,contours,hierarchy,CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
     
     //Draw the contours of the image
-    Mat connected = fillContours(img, contours);
+    Mat connected = fillContoursRandom(img, contours);
     
     vector<vector<segmentRectangle>> linesOfText = getLinesOfText(img, contours, hierarchy);
     
@@ -436,7 +432,7 @@ vector<Rect> find_text(cv::Mat img){
     for(int i=0;i<linesOfText.size();i++){
         Scalar newVal( rng(256), rng(256), rng(256) );
         for(int j=0;j<linesOfText[i].size();j++){
-            rectangle(linesImg, linesOfText[i][j].rect, newVal);
+            rectangle(linesImg, linesOfText[i][j].rect, newVal,2);
         }
     }
     
@@ -452,14 +448,14 @@ vector<Rect> find_text(cv::Mat img){
     /* Just an example of what getRegionRectangles returns*/
     Mat boundsImg = img.clone();
     for(int i=0;i<textRegionsRectangles.size();i++){
-        rectangle(boundsImg, textRegionsRectangles[i], Scalar(0,0,255));
+        rectangle(boundsImg, textRegionsRectangles[i], Scalar(0,0,255),2);
     }
     
     vector<Mat> bandw = {grayscaleMat,binaryMat};
     vector<Mat> color = {boundsImg};
     //display_images("bandw",bandw);
-    display_images("Color",color);
-    waitKey(0);
+    //display_images("Color",color);
+    //waitKey(0);
     
     return textRegionsRectangles;
 }
