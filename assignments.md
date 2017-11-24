@@ -7,10 +7,10 @@ It is the 21st of November.
 1. Functional - 27th November 2017 17:00
 2. Machine Learning - 29th November
 6. Entrepreneurship - 31st November 2017
+6. Computer Vision - 12th December 2017
 5. Human Factors - 14th December 2017
 3. Functional - 15th December 2017 17:00
 4. Fuzzy Logic - 15th December 2017
-6. Computer Vision -
 
 * Start taking notes in every lecture
 
