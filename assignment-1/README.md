@@ -48,7 +48,7 @@ Mean shift segmentation clusters nearby pixels with similar pixel values and set
 
 Once the mean-shift-segmentation has been performed, we convert the image to grayscale.
 That is, for every pixel, we take the values in its 3 channels in e.g. RGB and convert them to one channel using this equation:  
-<img src="./assets/report-images/rgb-to-grayscale-equatin.jpg" width="400"/>
+<img src="./assets/report-images/rgb-to-grayscale-equation.jpg" width="400"/>
 
 **Image converted to grayscale:**  
 <img src="./assets/grayscale/Notice0.jpg"/>
@@ -152,35 +152,35 @@ An average DICE coefficient was calculated for each test image with the equation
 Here are the average DICE coefficients for test each image (the text regions found by the program are shown first):  
 
 'Notice 1' Average DICE Coefficient: **0.979922**  
-<img src="./assets/textRegionRectangles/Notice0.jpg"/>  
+<img src="./assets/textRegionRectangles/Notice0.jpg"/>
 <img src="./assets/ground-truths/Notice1.jpg"/>  
 
 'Notice 2' Average DICE Coefficient: **0.978567**  
-<img src="./assets/textRegionRectangles/Notice1.jpg"/>  
+<img src="./assets/textRegionRectangles/Notice1.jpg"/>
 <img src="./assets/ground-truths/Notice2.jpg"/>  
 
 'Notice 3' Average DICE Coefficient: **0.929020**  
-<img src="./assets/textRegionRectangles/Notice2.jpg"/>    
+<img src="./assets/textRegionRectangles/Notice2.jpg"/>
 <img src="./assets/ground-truths/Notice3.jpg"/>  
 
 'Notice 4' Average DICE Coefficient: **0.984273**  
-<img src="(./assets/textRegionRectangles/Notice3.jpg"/>    
+<img src="./assets/textRegionRectangles/Notice3.jpg"/>
 <img src="./assets/ground-truths/Notice4.jpg"/>  
 
 'Notice 5' Average DICE Coefficient: **0.965611**  
-<img src="./assets/textRegionRectangles/Notice4.jpg"/>    
+<img src="./assets/textRegionRectangles/Notice4.jpg"/>
 <img src="./assets/ground-truths/Notice5.jpg"/>  
 
 'Notice 6' Average DICE Coefficient: **0.941424**  
-<img src="./assets/textRegionRectangles/Notice5.jpg"/>    
+<img src="./assets/textRegionRectangles/Notice5.jpg"/>
 <img src="./assets/ground-truths/Notice6.jpg"/>  
 
 'Notice 7' Average DICE Coefficient: **0.941101**  
-<img src="./assets/textRegionRectangles/Notice6.jpg"/>    
+<img src="./assets/textRegionRectangles/Notice6.jpg"/>
 <img src="./assets/ground-truths/Notice7.jpg"/>  
 
 'Notice 8' Average DICE Coefficient: **0.956966**  
-<img src="./assets/textRegionRectangles/Notice7.jpg"/>  
+<img src="./assets/textRegionRectangles/Notice7.jpg"/>
 <img src="./assets/ground-truths/Notice8.jpg"/>  
 
 Average DICE coefficient across all 8 test images: **0.959611**.
@@ -193,7 +193,7 @@ A better metric might make use of how many pixels of characters are successfully
 Another example of how the average DICE coefficients may give the wrong impression of how well the solution did is on 'Notice 5' where the only piece of text that was not correctly categorised was the fada of the 'Á' in the last text region, however this leads to the height of the ground truth to be increased all the way across the wide text region. This also happens on 'Notice 1' where the '.' characters (that are missing from the program's detected text regions) increase the width of two entire ground truths. Missing characters like fadas or full stops can disproportionately increase the difference between the observations and the ground truths.
 
 Another observation of the ground truths is that the ground truth for 'Notice 7' has decided to classify an area with lines of text as one text region where as the program has decided to classify it as two text regions. This causes the average DICE coefficient for the image to be 0.956966. Different people could be of the opinion that the program has correctly interpreted the below text as two regions instead of one.  
-<img src="./assets/report-images/ground-truth-discrepancy.jpg"/>
+<img src="./assets/report-images/ground-truth-discrepancy.jpg" width="500"/>
 
 ## 6. Closing Notes for Improvement
 
