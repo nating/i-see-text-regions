@@ -1,6 +1,7 @@
 # Locating Printed Text on Notices
 
-This report is on an OpenCV program developed to locate text on notices.
+This report is on an OpenCV program developed to locate text on notices.  
+<img src="./assets/report-images/example.png" />
 
 ## Contents
 
